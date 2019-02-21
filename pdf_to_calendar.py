@@ -1,5 +1,11 @@
-# needs to have /tmp and /csvs folders
-# to write to
+# Mateusz Ziemła mtizim.xyz
+# arg1 - pdf to be processed, full path
+# arg2 - directory to save the csv to, full path
+# python 2.7
+# needs tabula-py, pdftotxt package,
+# needs to have a tmp folder and a csv folder in the csv dir
+# code mostly written in 2017
+
 from tabula import read_pdf
 import math
 import re
@@ -9,13 +15,10 @@ from subprocess import call
 import random
 import sys
 
-HOME = subprocess.check_output("echo $HOME", shell=True).decode("utf-8")[0:-1] + "/"
-PWD = subprocess.check_output("pwd", shell=True).decode("utf-8")[0:-1] + "/"
+
 filename = sys.argv[1]
-if filename[0] != "/":
-    filename = PWD + filename
-PATH = "~/Programming/pdf_to_cal/"
-PATH_ = HOME + PATH[2:]
+PATH_ = sys.argv[2]
+PATH = PATH_
 TMP = PATH + "tmp/"
 TMP_ = PATH_ + "tmp/"
 newfilename = PATH + "csvs/" + filename.split("/")[-1][0:-3] + "csv"
@@ -94,11 +97,6 @@ def read_period():
     return extract_date_period(period[0]), extract_date_period(period[1])
 
 
-# todo make it cutoff to prevent the
-#   "The following is only for information because
-#    it is a round trip ending outside the printed period"
-# message
-
 def stringify(x):
     # nans go into nothings
     if (isinstance(x, float) and math.isnan(x)):
@@ -140,7 +138,7 @@ def file_to_table(filepath):
                          pandas_options={'header': None,
                                          'dtype': str},
                          pages="all",
-                         java_options=['-Dwarbler.port=9999'])
+                         java_options=['-Dwarbler.port=9999', '-Dsun.java2d.cmm=sun.java2d.cmm.kcms.KcmsServiceProvider'])
     readtable = readtable.values
     table = []
     for row in readtable:
@@ -178,7 +176,7 @@ def generate_event(row):
                 # print  start, end, name
                 return start, end, name
             elif (row[0] == "X" or
-                  row[0][0] + row[0][1] + row[0][2] == "OFF"):
+                  row[0][0:3] == "OFF"):
                 name = "Off"
                 name += "; city: %s" % row[1] if len(row) > 1 else ""
                 start = "full"
@@ -193,6 +191,12 @@ def generate_event(row):
                 return start, end, name
             elif (row[0][0:3] == "STB"):
                 name = "Standby; type %s in %s" % (row[0], row[1])
+                start = four_digit_time_to_standard(row[2])
+                end = four_digit_time_to_standard(row[3])
+                # print  start, end, name
+                return start, end, name
+            elif (row[0][0:9] == "SZKOLENIE"):
+                name = "Szkolenie"
                 start = four_digit_time_to_standard(row[2])
                 end = four_digit_time_to_standard(row[3])
                 # print  start, end, name
